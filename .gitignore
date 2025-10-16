@@ -1,1 +1,66 @@
-venv
+# =============================================================================
+# Python & Virtual Environment
+# =============================================================================
+
+# Virtual Environment
+# This is the most important one to ignore in a Python project.
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+develop-eggs/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# =============================================================================
+# Environment & Secrets
+# =============================================================================
+
+# Ignore environment files
+# These files often contain sensitive information like API keys and database passwords.
+.env
+.env.*
+*.env
+
+
+# =============================================================================
+# IDE & Editor Configs
+# =============================================================================
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# =============================================================================
+# Testing & Coverage
+# =============================================================================
+
+# Test artifacts and coverage reports
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
