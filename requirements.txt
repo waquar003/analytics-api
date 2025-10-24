@@ -1,7 +1,9 @@
-fastapi==0.115.11
-uvicorn
+fastapi
+uvicorn[standard]
 gunicorn
 sqlmodel
 pydantic
+pydantic-settings 
 sqlalchemy
 timescaledb
+psycopg2-binary

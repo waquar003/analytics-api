@@ -1,4 +1,5 @@
 services:
+  # The FastAPI Application Service
   app:
     image: analytics-api:v1
     build:
@@ -8,9 +9,12 @@ services:
       - .env
     ports:
       - "${PORT}:${PORT}"
-    command: uvicorn main:app --host 0.0.0.0 --port ${PORT} --reload
+    command: uvicorn src.main:app --host 0.0.0.0 --port ${PORT} --reload
     volumes:
-      - ./src:/code:rw
+      - ./src:/app/src:rw
+    depends_on: # Makes 'app' wait for 'db'
+      db:
+        condition: service_healthy
     develop:
       watch:
         - action: rebuild
@@ -19,3 +23,23 @@ services:
           path: requirements.txt
         - action: rebuild
           path: compose.yaml
+
+  # The TimescaleDB/PostgreSQL Database Service
+  db:
+    image: timescale/timescaledb:latest-pg16
+    ports:
+      - "${DB_PORT}:${DB_PORT}" 
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck: # Checks if the database is ready
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persists data
+
+volumes:
+  postgres_data: # Defines the persistent volume
