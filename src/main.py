@@ -1,10 +1,25 @@
-from typing import Union
-from fastapi import FastAPI
-from src.config import settings
+from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
+from src.db import create_db_and_tables
+from src.api import projects
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Application startup...")
+    create_db_and_tables()
+    yield
+    print("Application shutdown.")
 
+# Create the main FastAPI app instance
+app = FastAPI(
+    title="Analytics API",
+    lifespan=lifespan
+)
+
+# --- Include the Routers ---
+app.include_router(projects.router)
+
+# Add a simple root endpoint
 @app.get("/")
 def read_root():
-    print(settings.DATABASE_URL)  # Accessing the database URL from settings
-    return {"Hello": "Waquar"}
+    return {"message": "Welcome to the Analytics API"}
