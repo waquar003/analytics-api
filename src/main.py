@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.db import create_db_and_tables
-from src.api import projects
+from src.api import projects, events
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,8 +16,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# --- Include the Routers ---
+# Routers
 app.include_router(projects.router)
+app.include_router(events.router)
 
 # Add a simple root endpoint
 @app.get("/")
