@@ -7,3 +7,4 @@ pydantic-settings
 sqlalchemy
 timescaledb
 psycopg2-binary
+slowapi

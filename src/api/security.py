@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, Header, status
+from fastapi import Depends, HTTPException, Header, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session, select
 from typing import Optional
@@ -30,6 +30,7 @@ def get_project_from_secret_key(
     return project
 
 def get_project_for_tracking(
+    request: Request,
     session: Session = Depends(get_session),
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
     auth: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
@@ -42,6 +43,15 @@ def get_project_for_tracking(
         project = session.exec(
             select(Project).where(Project.public_api_key == x_api_key)
         ).first()
+        
+        # --- DOMAIN WHITELISTING SECURITY CHECK ---
+        if project and project.allowed_origins:
+            origin = request.headers.get("origin")
+            if not origin or origin not in project.allowed_origins:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, 
+                    detail="Origin not allowed"
+                )
         
     elif auth and auth.scheme == "Bearer":
         # 2. Try finding by Secret API Key (for server-side)

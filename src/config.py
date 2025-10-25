@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     # Application configuration
     PORT: int
 
+    # Rate limiting configuration
+    DEFAULT_RATELIMIT: str = "1000/minute"
+    TRACK_ENDPOINT_RATELIMIT: str = "10/second"
+
     DATABASE_URL: str = ""  # Default to empty, will be constructed if not provided
 
     class Config:

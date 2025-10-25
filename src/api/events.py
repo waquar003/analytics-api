@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, Query, status
+from fastapi import APIRouter, Depends, BackgroundTasks, Query, Request, status
 from sqlmodel import Session, text
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from enum import Enum
 import uuid
@@ -8,6 +8,8 @@ import uuid
 from src.db import engine
 from src.models import Project, AnalyticsEvent, EventCreate
 from src.api.security import get_project_for_tracking, get_project_from_secret_key
+from src.limiter import limiter
+from src.config import settings
 
 # Create an APIRouter
 router = APIRouter(
@@ -32,7 +34,9 @@ def _log_event_to_db(event_data: EventCreate, project_id: uuid.UUID):
 # --- API Endpoints ---
 
 @router.post("/track", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(settings.TRACK_ENDPOINT_RATELIMIT)
 def track_event(
+    request: Request,
     event_data: EventCreate,
     background_tasks: BackgroundTasks,
     project: Project = Depends(get_project_for_tracking)
@@ -71,7 +75,7 @@ def get_analytics(
     project: Project = Depends(get_project_from_secret_key),
     start_date: Optional[datetime] = Query(None, description="Start of the time range"),
     end_date: Optional[datetime] = Query(None, description="End of the time range"),
-    time_bucket: TimeBucket = Query(TimeBucket.day, description="Interval to bucket data by"),
+    time_bucket: Optional[TimeBucket] = Query(None, description="Interval to bucket data by"),
     group_by: GroupBy = Query(GroupBy.url, description="Dimension to group results by"),
     event_types: Optional[List[str]] = Query(None, description="Filter by one or more event types"),
     url: Optional[str] = Query(None, description="Filter by a specific URL")
@@ -85,6 +89,22 @@ def get_analytics(
     - Grouping by a dimension (group_by)
     - Filtering by events or URLs
     """
+
+    now = datetime.now(timezone.utc)
+    end_date_to_use = end_date or now
+    start_date_to_use = start_date or (end_date_to_use - timedelta(days=1))
+    
+    time_bucket_to_use = time_bucket
+    if not time_bucket_to_use:
+        time_delta = end_date_to_use - start_date_to_use
+        if time_delta <= timedelta(days=2):
+            time_bucket_to_use = TimeBucket.hour
+        elif time_delta <= timedelta(days=31):
+            time_bucket_to_use = TimeBucket.day
+        elif time_delta <= timedelta(days=90):
+            time_bucket_to_use = TimeBucket.week
+        else:
+            time_bucket_to_use = TimeBucket.month
     
     # Building SQL query dynamically 
     # Build SELECT clause
@@ -100,9 +120,9 @@ def get_analytics(
     where_clauses = ["project_id = :project_id", "timestamp BETWEEN :start_date AND :end_date"]
     params = {
         "project_id": project.id,
-        "start_date": start_date,
-        "end_date": end_date,
-        "time_bucket_str": time_bucket.value 
+        "start_date": start_date_to_use,
+        "end_date": end_date_to_use,
+        "time_bucket_str": time_bucket_to_use.value 
     }
     
     if event_types:
