@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Header, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session, select
 from typing import Optional
@@ -25,6 +25,34 @@ def get_project_from_secret_key(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Invalid Secret API Key"
+        )
+        
+    return project
+
+def get_project_for_tracking(
+    session: Session = Depends(get_session),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
+) -> Project:
+    
+    project = None
+    
+    if x_api_key:
+        # 1. Try finding by Public API Key (for client-side)
+        project = session.exec(
+            select(Project).where(Project.public_api_key == x_api_key)
+        ).first()
+        
+    elif auth and auth.scheme == "Bearer":
+        # 2. Try finding by Secret API Key (for server-side)
+        project = session.exec(
+            select(Project).where(Project.secret_api_key == auth.credentials)
+        ).first()
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid API Key or Token"
         )
         
     return project
