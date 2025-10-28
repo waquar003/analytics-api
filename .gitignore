@@ -37,7 +37,7 @@ MANIFEST
 # Ignore environment files
 # These files often contain sensitive information like API keys and database passwords.
 .env
-.env.*
+.env.*local
 *.env
 
 
