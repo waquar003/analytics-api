@@ -1,6 +1,6 @@
 from sqlmodel import create_engine, SQLModel, Session
 from sqlalchemy import text
-from src.models import *
+import src.models
 from src.config import settings
 
 # Get the DATABASE_URL from our centralized settings
