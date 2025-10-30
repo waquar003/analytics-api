@@ -7,13 +7,33 @@ from slowapi.errors import RateLimitExceeded
 from src.limiter import limiter  
 from src.db import create_db_and_tables
 from src.api import projects, events
+from src.kafka_producer import (
+    create_kafka_producer,
+    close_kafka_producer,
+    set_kafka_producer
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Application startup...")
+
+    # Initialize db
+    print("Initializing database...")
     create_db_and_tables()
+    print("Database initailization completed.")
+
+    # Initialize Kafka Producer
+    print("Initializing Kafka Producer...")
+    producer = create_db_and_tables()
+    set_kafka_producer(producer)
+    print("Kafka initialized.")
     yield
     print("Application shutdown.")
+
+    # Close Kafka Producer
+    print("Closign Kafka Produver...")
+    close_kafka_producer()
+    print("Kafka Producer closed.")
 
 app = FastAPI(
     title="Analytics API",

@@ -8,3 +8,5 @@ sqlalchemy
 timescaledb
 psycopg2-binary
 slowapi
+
+kafka-python
