@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, Query, Request, status
+from kafka import KafkaProducer
 from sqlmodel import Session, text
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from enum import Enum
 import uuid
 
+from src.kafka_producer import get_kafka_producer
 from src.db import engine
 from src.models import Project, AnalyticsEvent, EventCreate
 from src.api.security import get_project_for_tracking, get_project_from_secret_key
@@ -38,8 +40,9 @@ def _log_event_to_db(event_data: EventCreate, project_id: uuid.UUID):
 def track_event(
     request: Request,
     event_data: EventCreate,
-    background_tasks: BackgroundTasks,
-    project: Project = Depends(get_project_for_tracking)
+    # background_tasks: BackgroundTasks,
+    project: Project = Depends(get_project_for_tracking),
+    producer: KafkaProducer = Depends(get_kafka_producer)
 ):
     """
     Endpoint to log a new analytics event.
@@ -47,10 +50,15 @@ def track_event(
     and adds the DB write to a background task.
     """
     # Add the DB write to the background queue
-    background_tasks.add_task(
-        _log_event_to_db, 
-        event_data=event_data, 
-        project_id=project.id
+    # background_tasks.add_task(
+    #     _log_event_to_db, 
+    #     event_data=event_data, 
+    #     project_id=project.id
+    # )
+
+    producer.send(
+        settings.KAFKA_MAIN_TOPIC,
+        value=event_data.model_dump()
     )
     
     return {"message": "Event accepted"}
