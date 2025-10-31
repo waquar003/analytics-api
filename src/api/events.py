@@ -43,7 +43,7 @@ def track_event(
     """
     Endpoint to log a new analytics event.
     This is ASYNCHRONOUS: it returns 202 immediately
-    and adds the DB write to a background task.
+    and sends the event to a Kafka topic for processing.
     """
 
     try:
@@ -56,13 +56,20 @@ def track_event(
         user_agent = "unknown"
         referer = "unknown"
 
+    event_data_dict = event_data.model_dump()
+    
+    # Ensure the properties dictionary exists
+    if event_data_dict.get("properties") is None:
+        event_data_dict["properties"] = {}
+        
+    event_data_dict["properties"]["ip_address"] = ip_address
+    event_data_dict["properties"]["user_agent"] = user_agent
+    event_data_dict["properties"]["referer"] = referer
+    
     # Constructing message
     message = {
         'project_id': str(project.id),
-        'event_data': event_data.model_dump(),
-        'ip_address': ip_address,
-        'user_agent': user_agent,
-        'referer': referer,
+        'event_data': event_data_dict,
         'server_timestamp': datetime.utcnow().isoformat()
     }
     

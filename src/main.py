@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize Kafka Producer
     print("Initializing Kafka Producer...")
-    producer = create_db_and_tables()
+    producer = create_kafka_producer()
     set_kafka_producer(producer)
     print("Kafka initialized.")
     yield
