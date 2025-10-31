@@ -1,5 +1,14 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, Query, Request, status
+import logging
+from fastapi import (
+    APIRouter, 
+    Depends, 
+    Query, 
+    Request, 
+    status,
+    HTTPException
+)
 from kafka import KafkaProducer
+from kafka.errors import KafkaError
 from sqlmodel import Session, text
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
@@ -18,22 +27,9 @@ router = APIRouter(
     tags=["Events"]
 )
 
-# --- Background Task Function ---
-def _log_event_to_db(event_data: EventCreate, project_id: uuid.UUID):
-    """
-    This function runs in the background.
-    It creates its own database session.
-    """
-    event_dict = event_data.model_dump()
-    event_dict["project_id"] = project_id
-    
-    db_event = AnalyticsEvent.model_validate(event_dict)
+logger = logging.getLogger("AnalyticsAPI.Events")
 
-    with Session(engine) as session:
-        session.add(db_event)
-        session.commit()
-
-# --- API Endpoints ---
+# API Endpoints
 
 @router.post("/track", status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit(settings.TRACK_ENDPOINT_RATELIMIT)
@@ -49,17 +45,45 @@ def track_event(
     This is ASYNCHRONOUS: it returns 202 immediately
     and adds the DB write to a background task.
     """
-    # Add the DB write to the background queue
-    # background_tasks.add_task(
-    #     _log_event_to_db, 
-    #     event_data=event_data, 
-    #     project_id=project.id
-    # )
 
-    producer.send(
-        settings.KAFKA_MAIN_TOPIC,
-        value=event_data.model_dump()
-    )
+    try:
+        ip_address = request.client.host
+        user_agent = request.headers.get("user-agent", "unknown")
+        referer = request.headers.get("referer", "unknown")
+    except Exception as e:
+        logger.warning(f'could not extract request metadata: {e}')
+        ip_address = "unknown"
+        user_agent = "unknown"
+        referer = "unknown"
+
+    # Constructing message
+    message = {
+        'project_id': str(project.id),
+        'event_data': event_data.model_dump(),
+        'ip_address': ip_address,
+        'user_agent': user_agent,
+        'referer': referer,
+        'server_timestamp': datetime.utcnow().isoformat()
+    }
+    
+    # Send to Kafka
+    try:
+        producer.send(
+            settings.KAFKA_MAIN_TOPIC,
+            value = message
+        )
+    except KafkaError as e:
+        logger.error(f'CRITICAL: Failed to send event to Kafka: {e}')
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='Event processin g service is temporily unavailable. Please try aagin later.'
+        )
+    except Exception as e:
+        logger.error(f'Unexpected error sendign to Kafka: {e}')
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='An unexpected error occurred'
+        )
     
     return {"message": "Event accepted"}
 
