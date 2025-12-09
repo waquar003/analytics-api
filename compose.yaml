@@ -71,7 +71,7 @@ services:
 
   kafdrop:
     image: obsidiandynamics/kafdrop
-    restart: "no"
+    restart: "on-failure"
     ports:
       - "${KAFDROP_PORT}:9000"
     environment:
@@ -129,6 +129,27 @@ services:
           path: requirements.txt
         - action: rebuild
           path: Dockerfile.web
+  
+  # WORKER SERVICE
+  worker:
+    image: analytics-api:v1 
+    restart: always 
+    command: ["python", "-m", "src.worker.main"] 
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src:ro 
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "find ${WORKER_HEALTHCHECK_FILE_PATH} -mmin -2 | grep . || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 2m 
 
 # Persistent Volumes
 volumes:
