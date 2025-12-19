@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     WORKER_MAX_POLL_RECORDS: int = 100
     WORKER_HEALTHCHECK_FILE_PATH: str = "/tmp/worker_healthy"
 
+    # Redis Settings
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     class Config:
         env_file = Path(__file__).resolve().parent.parent / ".env"
         env_file_encoding = 'utf-8'

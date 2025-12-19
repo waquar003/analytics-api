@@ -14,11 +14,14 @@ from src.models import (
     RegisteredEventRead
 )
 from src.api import get_project_from_secret_key
+from src.worker.cache import SchemaCache
 
 router = APIRouter(
     prefix="/projects",
     tags=["Projects"]
 )
+
+cache = SchemaCache()
 
 @router.post("/", response_model=Project, status_code=status.HTTP_201_CREATED)
 def create_project(
@@ -122,6 +125,7 @@ def register_event_for_project(
         session.add(db_event)
         session.commit()
         session.refresh(db_event)
+        cache.invalidate(project.id)
     except IntegrityError as ie:
         session.rollback()
         raise HTTPException(
@@ -185,6 +189,7 @@ def delete_registered_event(
     try:
         session.delete(db_event)
         session.commit()
+        cache.invalidate(project.id)
     except Exception as e:
         session.rollback()
         raise HTTPException(

@@ -11,23 +11,21 @@ from sqlmodel import Session, select
 
 from src.config import settings
 from src.models import AnalyticsEvent, RegisteredEvent
+from src.worker.cache import SchemaCache
 
 logger = logging.getLogger("AnalyticsWorker.Processing")
 
+schema_cache = SchemaCache()
 
 def is_event_valid(session: Session, project_id: UUID, event_name: str) -> bool:
     """
     Checks if an event is registered for the project.
-    TODO: Implement caching.
     """
+    logger.info("Trying")
     try:
-        statement = select(RegisteredEvent).where(
-            RegisteredEvent.project_id == project_id,
-            RegisteredEvent.event_name == event_name
-        )
-        result = session.exec(statement).first()
+        allowed_events = schema_cache.get_allowed_events(session, project_id)
         
-        if result:
+        if event_name in allowed_events:
             return True
         else:
             logger.warning(f"Invalid event for project_id {project_id}: '{event_name}'. Dropping.")
