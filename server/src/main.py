@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+from src.api import events
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from src.limiter import limiter  
 from src.db import create_db_and_tables
-from src.api import projects, events
+from src.api import projects
 from src.kafka_producer import (
     create_kafka_producer,
     close_kafka_producer,
