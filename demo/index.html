@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analytics SDK Mock Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; }
+        button { padding: 0.5rem 1rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>SDK Integration Test</h1>
+    <button id="trackBtn">Trigger Event</button>
+
+    <script src="../sdk/dist/index.global.js"></script>
+    <script>
+        // Use the global 'Analytics' object created by the --global-name flag
+        Analytics.init('pub_cc7ed9e885a1bd03c6be600931aa8f21', { 
+            baseUrl: 'http://localhost:8000', 
+            debug: true 
+        });
+
+        document.getElementById('trackBtn').addEventListener('click', () => {
+            Analytics.track('test_click', { 
+                button_color: 'blue',
+                environment: 'fedora_dev' 
+            });
+        });
+    </script>
+</body>
+</html>

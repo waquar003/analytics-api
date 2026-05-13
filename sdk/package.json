@@ -1,0 +1,25 @@
+{
+	"name": "analytics-sdk",
+	"version": "1.0.0",
+	"description": "JavaScript SDK for event tracking",
+	"keywords": [
+		"analytics",
+		"sdk"
+	],
+	"license": "ISC",
+	"author": "Waquar Ahmad",
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "src/index.js",
+	"scripts": {
+		"build": "tsup src/index.ts --format esm,iife --minify --dts --clean"
+	},
+	"files": [
+		"dist",
+		"src"
+	],
+	"devDependencies": {
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3"
+	}
+}
