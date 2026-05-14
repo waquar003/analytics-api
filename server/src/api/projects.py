@@ -1,5 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
+from server.src.api.security import get_current_user
+from server.src.models.user import User, UserToProject
 from sqlmodel import Session, select
 import secrets
 import uuid
@@ -26,7 +28,8 @@ cache = SchemaCache()
 @router.post("/", response_model=Project, status_code=status.HTTP_201_CREATED)
 def create_project(
     project_data: ProjectCreate, 
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Create a new project.
@@ -45,6 +48,11 @@ def create_project(
     
     try:
         session.add(project)
+        session.flush()
+
+        link = UserToProject(user_id=current_user.id, project_id=project.id)
+        session.add(link)
+
         session.commit()
         session.refresh(project)
     except IntegrityError as ie:

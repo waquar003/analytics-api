@@ -1,5 +1,6 @@
 import uuid
-from sqlmodel import Field, SQLModel, Column
+from server.src.models.user import User, UserToProject
+from sqlmodel import Field, SQLModel, Column, Relationship
 from typing import Optional, List
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -20,6 +21,11 @@ class Project(SQLModel, table=True):
     secret_api_key: str = Field(unique=True, index=True)
     allowed_origins: Optional[List[str]] = Field(
         default=None, sa_column=Column(JSONB)
+    )
+
+    user: User = Relationship(
+        back_populates="projects",
+        link_model=UserToProject
     )
 
 class ProjectCreate(SQLModel):

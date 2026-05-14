@@ -11,3 +11,5 @@ slowapi
 
 kafka-python
 redis
+
+passlib[bcrypt]

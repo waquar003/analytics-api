@@ -1,5 +1,7 @@
 from fastapi import Depends, HTTPException, Header, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from server.src.api.utils import verify_password
+from server.src.models.user import User
 from sqlmodel import Session, select
 from typing import Optional
 
@@ -66,3 +68,16 @@ def get_project_for_tracking(
         )
         
     return project
+
+async def get_current_user(
+    session: Session = Depends(get_session),
+    x_user_email: str = Header(...),
+    x_user_password: str = Header(...)     
+) -> User:
+    user = session.exec(select(User).where(User.email == x_user_email)).first()
+    if not user or not verify_password(x_user_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials in headers"
+        )
+    return user
