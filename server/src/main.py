@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+from src.api import auth
 from src.api import events
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -48,7 +49,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:4200"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,6 +58,7 @@ app.add_middleware(
 # Routers
 app.include_router(projects.router)
 app.include_router(events.router)
+app.include_router(auth.router)
 
 @app.get("/")
 def read_root():

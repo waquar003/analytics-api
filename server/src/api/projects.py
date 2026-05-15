@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from server.src.api.security import get_current_user
-from server.src.models.user import User, UserToProject
+from src.api.security import get_current_user
+from src.models.user import User
 from sqlmodel import Session, select
 import secrets
 import uuid
@@ -43,16 +43,12 @@ def create_project(
         name=project_data.name, 
         public_api_key=public_key,
         secret_api_key=secret_key,
-        allowed_origins=project_data.allowed_origins
+        allowed_origins=project_data.allowed_origins,
+        user_id=current_user.id
     )
     
     try:
         session.add(project)
-        session.flush()
-
-        link = UserToProject(user_id=current_user.id, project_id=project.id)
-        session.add(link)
-
         session.commit()
         session.refresh(project)
     except IntegrityError as ie:

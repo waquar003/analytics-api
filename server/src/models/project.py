@@ -1,8 +1,9 @@
 import uuid
-from server.src.models.user import User, UserToProject
 from sqlmodel import Field, SQLModel, Column, Relationship
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlalchemy.dialects.postgresql import JSONB
+if TYPE_CHECKING:
+    from .user import User
 
 class Project(SQLModel, table=True):
     """
@@ -23,10 +24,8 @@ class Project(SQLModel, table=True):
         default=None, sa_column=Column(JSONB)
     )
 
-    user: User = Relationship(
-        back_populates="projects",
-        link_model=UserToProject
-    )
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True, nullable=False)
+    user: "User" = Relationship(back_populates='projects')
 
 class ProjectCreate(SQLModel):
     """

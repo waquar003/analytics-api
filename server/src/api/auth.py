@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from server.src.api.utils import hash_password, verify_password
-from sqlmodel import Session
+from src.api.utils import hash_password, verify_password
+from sqlmodel import Session, select
 from src.db import get_session
 from src.models.user import User, UserCreate, UserRead
 
@@ -11,7 +11,7 @@ def signup(
     user_data: UserCreate,
     session: Session = Depends(get_session),    
 ):
-    existing_user = session.query(User).filter(User.email == user_data.email).first()
+    existing_user = session.exec(select(User).where(User.email == user_data.email)).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     

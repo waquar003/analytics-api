@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, Header, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from server.src.api.utils import verify_password
-from server.src.models.user import User
+from src.api.utils import verify_password
+from src.models.user import User
 from sqlmodel import Session, select
 from typing import Optional
 
