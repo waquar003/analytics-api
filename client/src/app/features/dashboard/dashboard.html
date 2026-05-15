@@ -1,0 +1,93 @@
+<div class="dashboard-container">
+  <aside class="sidebar">
+    <h2>Your Projects</h2>
+    <button (click)="openModal()" class="btn-new">+ New Project</button>
+
+    <ul class="project-list">
+      @for (project of projects(); track project.id) {
+      <li [class.active]="selectedProject()?.id === project.id" (click)="selectProject(project)">
+        {{ project.name }}
+      </li>
+      }
+    </ul>
+  </aside>
+
+  <main class="content">
+    @if (selectedProject(); as p) {
+    <section class="project-details">
+      <h1>{{ p.name }} Management</h1>
+
+      <div class="card">
+        <h3>API Endpoints & Keys</h3>
+        <p><strong>Public Key:</strong> <code>{{ p.public_api_key }}</code></p>
+        <p><strong>Secret Key:</strong> <code>{{ p.secret_api_key }}</code></p>
+        <button (click)="onRegenerateKey()" class="btn-warn">Regenerate Public Key</button>
+      </div>
+
+      <div class="card">
+        <h3>Domain Whitelisting</h3>
+
+        <div class="domain-list">
+          @for (domain of selectedProject()?.allowed_origins; track domain) {
+          <div class="domain-badge">
+            <span>{{ domain }}</span>
+            <button (click)="onDeleteDomain(domain)" class="btn-icon-delete">&times;</button>
+          </div>
+          } @empty {
+          <p class="text-muted">All origins are currently allowed.</p>
+          }
+        </div>
+
+        <div class="domain-input mt-2">
+          <input #domainInput type="text" placeholder="e.g. https://myapp.com">
+          <button (click)="onAddDomain(domainInput.value); domainInput.value=''">Add Domain</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Registered Events</h3>
+        <p class="text-muted">Only events listed here will be processed by the tracker.</p>
+
+        <div class="event-list">
+          @for (event of registeredEvents(); track event.id) {
+          <div class="event-item">
+            <span><code>{{ event.event_name }}</code></span>
+            <button (click)="onDeleteEvent(event.id)" class="btn-icon-delete">Delete</button>
+          </div>
+          } @empty {
+          <p>No events registered. Tracking is currently disabled for this project.</p>
+          }
+        </div>
+
+        <div class="event-input mt-2">
+          <input #eventName type="text" placeholder="e.g. signup_completed">
+          <button (click)="onRegisterEvent(eventName.value); eventName.value=''">Add Event</button>
+        </div>
+      </div>
+    </section>
+    } @else {
+    <div class="empty-state">Select a project to manage settings.</div>
+    }
+  </main>
+</div>
+
+
+@if (showCreateModal()) {
+<div class="modal-overlay">
+  <div class="modal-card">
+    <h3>Create New Project</h3>
+    <p>Enter a name for your application or website.</p>
+
+    <input type="text" [value]="projectName()" (input)="projectName.set(nameInput.value)" #nameInput
+      placeholder="e.g. My Portfolio App" class="form-input" (keyup.enter)="!isButtonDisabled() && onCreateProject()">
+
+    <div class="modal-actions">
+      <button (click)="showCreateModal.set(false)" class="btn-secondary">Cancel</button>
+
+      <button (click)="onCreateProject()" class="btn-primary" [disabled]="isButtonDisabled()">
+        Create Project
+      </button>
+    </div>
+  </div>
+</div>
+}

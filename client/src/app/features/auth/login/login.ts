@@ -22,7 +22,7 @@ export class Login {
   onLogin() {
     if(this.form.valid) {
       this.auth.login(this.form.value as any).subscribe({
-        next: () => this.router.navigate(['/projects']),
+        next: () => this.router.navigate(['/dashboard']),
         error: () => alert('Invalid credentials')
       })
     }

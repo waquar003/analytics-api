@@ -25,6 +25,8 @@ export class AuthService {
   login(data: UserCreate): Observable<UserRead> {
     return this.http.post<UserRead>(`${this.AUTH_URL}/login`, data).pipe(
       tap(res => {
+        localStorage.setItem('x-user-email', data.email);
+        localStorage.setItem('x-user-password', data.password!);
         this.currentUser.set(res);
       })
     )
@@ -32,5 +34,8 @@ export class AuthService {
 
   logout() {
     this.currentUser.set(null);
+    localStorage.removeItem('x-user-email');
+    localStorage.removeItem('x-user-password');
+    this.router.navigate(['/login']);
   }
 }

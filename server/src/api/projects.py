@@ -72,16 +72,21 @@ def get_my_project_details(
     """
     return project
 
-@router.post("/regenerate-key", response_model=Project)
+@router.post("/{project_id}/regenerate-key", response_model=Project)
 def regenerate_public_api_key(
-    project: Project = Depends(get_project_from_secret_key),
-    session: Session = Depends(get_session)
+    project_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Regenerates the PUBLIC API key for your project.
     This invalidates the old key immediately.
     Use this if your key has been exposed or spammed.
     """
+    project = session.get(Project, project_id)
+    if not project or project.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
     new_public_key = f"pub_{secrets.token_hex(16)}"
     project.public_api_key = new_public_key
     
@@ -92,20 +97,25 @@ def regenerate_public_api_key(
     return project
 
 @router.post(
-    "/events",
+    "/{project_id}/events",
     response_model=RegisteredEventRead,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new event type for your project"
 )
 def register_event_for_project(
+    project_id: uuid.UUID,
     event_data: RegisteredEventCreate,
-    project: Project = Depends(get_project_from_secret_key),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Register a new event type (e.g. 'signup', 'purchase') for your project.
     This allows tracking of only approved event types.
     """
+
+    project = session.get(Project, project_id)
+    if not project or project.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     existing = session.exec(
         select(RegisteredEvent).where(
@@ -169,22 +179,27 @@ def get_registered_events_for_project(
 
 
 @router.delete(
-    '/events/{event_id}',
+    '/{project_id}/events/{event_id}',
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a registered event type from your project"
 )
 def delete_registered_event(
+    project_id: uuid.UUID,
     event_id: uuid.UUID,
-    project: Project = Depends(get_project_from_secret_key),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Delete a registered event type from your project.
     """
 
+    project = session.get(Project, project_id)
+    if not project or project.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found or access denied")
+
     db_event = session.get(RegisteredEvent, event_id)
 
-    if not db_event or db_event.project_id != project.id:
+    if not db_event or db_event.project_id != project_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Registered event not found for this project."
@@ -202,3 +217,48 @@ def delete_registered_event(
         )
     
     return None
+
+@router.get("/all", response_model=List[Project])
+def list_all_projects(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    statement = select(Project).where(Project.user_id == current_user.id)
+    projects = session.exec(statement).all()
+    return projects
+
+
+@router.patch("/{project_id}/whitelist", response_model=Project)
+def update_whitelisted_domains(
+    project_id: uuid.UUID,
+    domains: List[str],
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    project = session.get(Project, project_id)
+    if not project or project.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project.allowed_origins = domains
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    
+    return project
+
+
+@router.get("/{project_id}/events", response_model=List[RegisteredEventRead])
+def get_registered_events_for_project(
+    project_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    project = session.get(Project, project_id)
+    if not project or project.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    events = session.exec(
+        select(RegisteredEvent).where(RegisteredEvent.project_id == project_id)
+    ).all()
+
+    return events
