@@ -1,5 +1,6 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from src.models.event import AnalyticsEvent
 from src.api.security import get_current_user
 from src.models.user import User
 from sqlmodel import Session, select
@@ -259,6 +260,29 @@ def get_registered_events_for_project(
     
     events = session.exec(
         select(RegisteredEvent).where(RegisteredEvent.project_id == project_id)
+    ).all()
+
+    return events
+
+
+@router.get("/{project_id}/events/received", response_model=List[AnalyticsEvent])
+def get_received_events(
+    project_id: uuid.UUID,
+    limit: int = Query(50, le=100),
+    offset: int = Query(0, ge=0),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    project = session.get(Project, project_id)
+    if not project or project.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    events = session.exec(
+        select(AnalyticsEvent)
+        .where(AnalyticsEvent.project_id == project_id)
+        .order_by(AnalyticsEvent.timestamp.desc())
+        .offset(offset)
+        .limit(limit)
     ).all()
 
     return events

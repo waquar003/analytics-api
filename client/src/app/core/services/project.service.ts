@@ -45,4 +45,10 @@ export class ProjectService {
   deleteEvent(projectId: string, eventId: string): Observable<void> {
     return this.http.delete<void>(`${this.API_URL}/${projectId}/events/${eventId}`)
   }
+
+  getLiveFeed(projectId: string, limit: number = 30, offset: number = 0): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.API_URL}/${projectId}/events/received?limit=${limit}&offset=${offset}`
+    )
+  }
 }

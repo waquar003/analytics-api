@@ -64,6 +64,44 @@
           <button (click)="onRegisterEvent(eventName.value); eventName.value=''">Add Event</button>
         </div>
       </div>
+
+      <div class="card">
+          <div class="flex-header">
+            <div class="header-titles">
+              <h3>Live Ingestion Log Stream</h3>
+              <p class="text-muted subtext">Displaying incoming real-time raw table mutations</p>
+            </div>
+            <button (click)="refreshLogs()" class="btn-sm-secondary">🔄 Hard Reset Feed</button>
+          </div>
+          
+          <div class="live-stream-log">
+            <div class="log-entry table-header">
+              <span class="log-time"><strong>TIMESTAMP</strong></span>
+              <span class="log-type"><strong>EVENT TYPE</strong></span>
+              <span class="log-url"><strong>ORIGINATING URL</strong></span>
+              <span class="log-session"><strong>SESSION ID</strong></span>
+            </div>
+
+            @for (log of liveLogs(); track log.id) {
+              <div class="log-entry">
+                <span class="log-time">{{ log.timestamp | date:'mediumTime' }}</span>
+                <span class="log-type"><code class="accent-code">{{ log.event_type }}</code></span>
+                <span class="log-url" [title]="log.url">{{ log.url }}</span>
+                <span class="log-session text-muted"><code>{{ log.session_id || 'anonymous' }}</code></span>
+              </div>
+            } @empty {
+              <p class="text-muted text-center py-4">Waiting for incoming streaming channels... Fire sample payloads from your application SDK to view entries.</p>
+            }
+          </div>
+
+          @if (liveLogs().length > 0) {
+            <div class="pagination-footer">
+              <button (click)="loadMoreLogs()" class="btn-load-more">
+                Load Next Batch Older Events ↓
+              </button>
+            </div>
+          }
+        </div>
     </section>
     } @else {
     <div class="empty-state">Select a project to manage settings.</div>

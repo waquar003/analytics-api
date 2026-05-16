@@ -1,9 +1,10 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Project, ProjectService } from '../../core/services/project.service';
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [],
+  imports: [DatePipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
@@ -28,6 +29,7 @@ export class Dashboard implements OnInit {
   selectProject(project: Project) {
     this.selectedProject.set(project)
     this.loadEvents(project.id)
+    this.refreshLogs()
   }
 
   onRegenerateKey() {
@@ -108,6 +110,32 @@ export class Dashboard implements OnInit {
           alert('Event deleted successfully.')
         },
         error: (err) => alert(err.error?.detail || "Failed to delete event")
+      })
+    }
+  }
+
+  refreshLogs() {
+    const p = this.selectedProject();
+    if (p) {
+      this.projectService.getLiveFeed(p.id).subscribe(logs => this.liveLogs.set(logs));
+    }
+  }
+
+  currentPage = signal(0);
+  pageSize = 30;
+  liveLogs = signal<any[]>([])
+
+  loadMoreLogs() {
+    const p = this.selectedProject();
+    if (p) {
+      const nextOffset = (this.currentPage() + 1)*this.pageSize;
+      this.projectService.getLiveFeed(p.id, this.pageSize, nextOffset).subscribe(newLogs => {
+        if (newLogs.length > 0) {
+          this.liveLogs.update(currentLogs => [...currentLogs, ...newLogs]);
+          this.currentPage.update(page => page + 1)
+        } else {
+          alert("No more logs aavilable")
+        }
       })
     }
   }
