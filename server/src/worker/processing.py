@@ -96,6 +96,6 @@ def process_message_batch(
                 logger.error(f"Unexpected error processing message (Offset {msg.offset}): {e}. Sending to DLQ.")
 
             # Always commit the offset, even for dropped/failed messages to avoid stucking in lhte loop
-            offsets_to_commit[tp] = OffsetAndMetadata(msg.offset + 1, None, None)
+            offsets_to_commit[tp] = OffsetAndMetadata(msg.offset + 1, "", -1)
 
     return valid_events_to_insert, offsets_to_commit

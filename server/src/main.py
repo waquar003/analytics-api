@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from src.api import auth
@@ -54,6 +54,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def dynamic_cors_handler(request: Request, call_next):
+    origin = request.headers.get("origin")
+    path = request.url.path
+
+    if request.method == "OPTIONS":
+        response = Response(status_code=204)
+        if path == "/track":
+            response.headers["Access-Control-Allow-Origin"] = origin or "*"
+            response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-API-Key"
+        elif origin == "http://localhost:4200":
+            response.headers["Access-Control-Allow-Origin"] = "http://localhost:4200"
+            response.headers["Access-Control-Allow-Methods"] = "*"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        else:
+            return Response(status_code=400, content="Origin access disallowed by dashboard security matrix")
+        return response
+    
+    response = await call_next(request)
+
+    # Append runtime CORS headers based on targeting route endpoints
+    if path == "/track" and origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+    elif origin == "http://localhost:4200":
+        response.headers["Access-Control-Allow-Origin"] = "http://localhost:4200"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+
+    return response
+
 
 # Routers
 app.include_router(projects.router)

@@ -5,3 +5,4 @@ from .registered_event import (
     RegisteredEventCreate, 
     RegisteredEventRead
 )
+from .user import User, UserCreate, UserRead

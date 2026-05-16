@@ -280,7 +280,7 @@ def get_received_events(
     events = session.exec(
         select(AnalyticsEvent)
         .where(AnalyticsEvent.project_id == project_id)
-        .order_by(AnalyticsEvent.timestamp.desc())
+        .order_by(AnalyticsEvent.timestamp.desc(), AnalyticsEvent.id.desc())
         .offset(offset)
         .limit(limit)
     ).all()

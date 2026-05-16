@@ -28,6 +28,8 @@ export class Dashboard implements OnInit {
 
   selectProject(project: Project) {
     this.selectedProject.set(project)
+    this.currentPage.set(0);
+    this.liveLogs.set([]);
     this.loadEvents(project.id)
     this.refreshLogs()
   }
