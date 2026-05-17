@@ -1,0 +1,151 @@
+<div class="dashboard-container">
+  <aside class="sidebar">
+    <h2>Your Projects</h2>
+    <button (click)="openModal()" class="btn-new">+ New Project</button>
+
+    <ul class="project-list">
+      @for (project of projects(); track project.id) {
+      <li [class.active]="selectedProject()?.id === project.id" (click)="selectProject(project)">
+        {{ project.name }}
+      </li>
+      }
+    </ul>
+  </aside>
+
+  <main class="content">
+    @if (selectedProject(); as p) {
+    <section class="project-details">
+      <h1>{{ p.name }} Management</h1>
+
+      <div class="card">
+        <h3>API Endpoints & Keys</h3>
+        <p><strong>Public Key:</strong> <code>{{ p.public_api_key }}</code></p>
+        <p><strong>Secret Key:</strong> <code>{{ p.secret_api_key }}</code></p>
+        <button (click)="onRegenerateKey()" class="btn-warn">Regenerate Public Key</button>
+      </div>
+
+      <div class="card">
+        <h3>Domain Whitelisting</h3>
+
+        <div class="domain-list">
+          @for (domain of selectedProject()?.allowed_origins; track domain) {
+          <div class="domain-badge">
+            <span>{{ domain }}</span>
+            <button (click)="onDeleteDomain(domain)" class="btn-icon-delete">&times;</button>
+          </div>
+          } @empty {
+          <p class="text-muted">All origins are currently allowed.</p>
+          }
+        </div>
+
+        <div class="domain-input mt-2">
+          <input #domainInput type="text" placeholder="e.g. https://myapp.com">
+          <button (click)="onAddDomain(domainInput.value); domainInput.value=''">Add Domain</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Registered Events</h3>
+        <p class="text-muted">Only events listed here will be processed by the tracker.</p>
+
+        <div class="event-list">
+          @for (event of registeredEvents(); track event.id) {
+          <div class="event-item">
+            <span><code>{{ event.event_name }}</code></span>
+            <button (click)="onDeleteEvent(event.id)" class="btn-icon-delete">Delete</button>
+          </div>
+          } @empty {
+          <p>No events registered. Tracking is currently disabled for this project.</p>
+          }
+        </div>
+
+        <div class="event-input mt-2">
+          <input #eventName type="text" placeholder="e.g. signup_completed">
+          <button (click)="onRegisterEvent(eventName.value); eventName.value=''">Add Event</button>
+        </div>
+      </div>
+
+      <div class="card">
+          <div class="flex-header">
+            <div class="header-titles">
+              <h3>Live Ingestion Log Stream</h3>
+              <p class="text-muted subtext">Displaying incoming real-time raw table mutations</p>
+            </div>
+            <button (click)="refreshLogs()" class="btn-sm-secondary">🔄 Hard Reset Feed</button>
+          </div>
+          
+          <div class="live-stream-log">
+            <div class="log-entry table-header">
+              <span class="log-time"><strong>TIMESTAMP</strong></span>
+              <span class="log-type"><strong>EVENT TYPE</strong></span>
+              <span class="log-url"><strong>ORIGINATING URL</strong></span>
+              <span class="log-session"><strong>SESSION ID</strong></span>
+            </div>
+
+            @for (log of liveLogs(); track log.id) {
+              <div class="log-entry">
+                <span class="log-time">{{ log.timestamp | date:'mediumTime' }}</span>
+                <span class="log-type"><code class="accent-code">{{ log.event_type }}</code></span>
+                <span class="log-url" [title]="log.url">{{ log.url }}</span>
+                <span class="log-session text-muted"><code>{{ log.session_id || 'anonymous' }}</code></span>
+              </div>
+            } @empty {
+              <p class="text-muted text-center py-4">Waiting for incoming streaming channels... Fire sample payloads from your application SDK to view entries.</p>
+            }
+          </div>
+
+          @if (liveLogs().length > 0) {
+            <div class="pagination-footer">
+              <button (click)="loadMoreLogs()" class="btn-load-more">
+                Load Next Batch Older Events ↓
+              </button>
+            </div>
+          }
+        </div>
+
+        <div class="card wide-card">
+          <h3>Project Traffic Summary</h3>
+          <div class="analytics-chart-placeholder">
+            @for (stat of analyticsData(); track stat.bucket + stat.dimension) {
+              <div class="chart-row">
+                <span class="timestamp-label">{{ stat.bucket | date:'shortTime' }}</span>
+                <span class="badge">{{ stat.dimension }}</span>
+                <div class="progress-bar-container">
+                  <div class="progress-bar" [style.width.%]="calcPercentage(stat.count)"></div>
+                </div>
+                <span class="count-value"><strong>{{ stat.count }}</strong> events</span>
+              </div>
+            } @empty {
+              <p class="text-muted">No structural metrics found within the selected interval.</p>
+            }
+          </div>
+        </div>
+
+        
+    </section>
+    } @else {
+    <div class="empty-state">Select a project to manage settings.</div>
+    }
+  </main>
+</div>
+
+
+@if (showCreateModal()) {
+<div class="modal-overlay">
+  <div class="modal-card">
+    <h3>Create New Project</h3>
+    <p>Enter a name for your application or website.</p>
+
+    <input type="text" [value]="projectName()" (input)="projectName.set(nameInput.value)" #nameInput
+      placeholder="e.g. My Portfolio App" class="form-input" (keyup.enter)="!isButtonDisabled() && onCreateProject()">
+
+    <div class="modal-actions">
+      <button (click)="showCreateModal.set(false)" class="btn-secondary">Cancel</button>
+
+      <button (click)="onCreateProject()" class="btn-primary" [disabled]="isButtonDisabled()">
+        Create Project
+      </button>
+    </div>
+  </div>
+</div>
+}

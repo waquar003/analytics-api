@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+gunicorn
+sqlmodel
+pydantic
+pydantic-settings 
+sqlalchemy
+timescaledb
+psycopg2-binary
+slowapi
+
+kafka-python
+redis
+
+passlib[bcrypt]

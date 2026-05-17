@@ -118,7 +118,7 @@ services:
   app:
     image: analytics-api:v1
     build:
-      context: .
+      context: ./server
       dockerfile: Dockerfile.web
     env_file:
       - .env
@@ -126,7 +126,7 @@ services:
       - "${PORT}:${PORT}"
     command: watchfiles 'uvicorn src.main:app --host 0.0.0.0 --port ${PORT}' src
     volumes:
-      - ./src:/app/src:rw
+      - ./server/src:/app/src:rw,z
     depends_on:
       db:
         condition: service_healthy
@@ -137,12 +137,12 @@ services:
     develop:
       watch:
         - action: sync
-          path: ./src
+          path: ./server/src
           target: /app/src
         - action: rebuild
-          path: requirements.txt
+          path: ./server/requirements.txt
         - action: rebuild
-          path: Dockerfile.web
+          path: ./server/Dockerfile.web
   
   # WORKER SERVICE
   worker:
@@ -152,7 +152,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./src:/app/src:ro 
+      - ./server/src:/app/src:ro,z
     depends_on:
       db:
         condition: service_healthy
