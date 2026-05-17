@@ -15,13 +15,13 @@
     <script src="index.global.js"></script>
     <script>
         // Use the global 'Analytics' object created by the --global-name flag
-        Analytics.init('pub_f9a745a5a3ea49652f994d6aa7b2ab1c', { 
+        Analytics.init('pub_49de5eb8de7e347472cac46233e98ed1', { 
             baseUrl: 'http://localhost:8000', 
             debug: true 
         });
 
         document.getElementById('trackBtn').addEventListener('click', () => {
-            Analytics.track('test_click', { 
+            Analytics.track('test_click_btn', { 
                 button_color: 'blue',
                 environment: 'fedora_dev' 
             });

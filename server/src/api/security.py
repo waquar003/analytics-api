@@ -49,11 +49,13 @@ def get_project_for_tracking(
         # --- DOMAIN WHITELISTING SECURITY CHECK ---
         if project and project.allowed_origins:
             origin = request.headers.get("origin")
-            if not origin or origin not in project.allowed_origins:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, 
-                    detail="Origin not allowed"
-                )
+
+            if "*" not in project.allowed_origins:
+                if not origin or origin not in project.allowed_origins:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN, 
+                        detail="Origin not allowed"
+                    )
         
     elif auth and auth.scheme == "Bearer":
         # 2. Try finding by Secret API Key (for server-side)
