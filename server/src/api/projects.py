@@ -1,4 +1,5 @@
-from typing import List
+from enum import Enum
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from src.models.event import AnalyticsEvent
 from src.api.security import get_current_user
@@ -7,6 +8,9 @@ from sqlmodel import Session, select
 import secrets
 import uuid
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timezone, timedelta
+from src.db import engine
+from sqlmodel import text
 
 from src.db import get_session
 from src.models import (
@@ -286,3 +290,65 @@ def get_received_events(
     ).all()
 
     return events
+
+class TimeBucket(str, Enum):
+    minute = "1 minute"
+    hour = "1 hour"
+    day = "1 day"
+    week = "1 week"
+    month = "1 month"
+
+class GroupBy(str, Enum):
+    url = "url"
+    event_type = "event_type"
+    session_id = "session_id"
+    user_id = "user_id"
+
+@router.get("/{project_id}/analytics/summary")
+def get_analytics(
+    project_id: uuid.UUID,
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    time_bucket: Optional[TimeBucket]= Query(None),
+    group_by: GroupBy = Query(GroupBy.event_type),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    project = session.get(Project, project_id)
+    if not project or project.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    now = datetime.now(timezone.utc)
+    end_date_to_use = end_date or now
+    start_date_to_use = start_date or (end_date_to_use - timedelta(days=1))
+    
+    time_bucket_to_use = time_bucket
+    if not time_bucket_to_use:
+        time_delta = end_date_to_use - start_date_to_use
+        if time_delta <= timedelta(days=2):
+            time_bucket_to_use = TimeBucket.hour
+        else:
+            time_bucket_to_use = TimeBucket.day
+
+    # Safe Dynamic SQL construction matching your execution engine
+    full_query = f"""
+        SELECT
+            time_bucket(:time_bucket_str, timestamp) AS bucket,
+            {group_by.value} AS dimension, 
+            COUNT(*) AS count
+        FROM analyticsevent
+        WHERE project_id = :project_id AND timestamp BETWEEN :start_date AND :end_date
+        GROUP BY bucket, {group_by.value}
+        ORDER BY bucket DESC, count DESC;
+    """
+    
+    
+    with Session(engine) as raw_session:
+        results = raw_session.exec(text(full_query), params={
+            "project_id": project.id,
+            "start_date": start_date_to_use,
+            "end_date": end_date_to_use,
+            "time_bucket_str": time_bucket_to_use.value
+        }).all()
+        
+    return [{"bucket": r[0], "dimension": r[1], "count": r[2]} for r in results]

@@ -32,6 +32,7 @@ export class Dashboard implements OnInit {
     this.liveLogs.set([]);
     this.loadEvents(project.id)
     this.refreshLogs()
+    this.loadAnalytics();
   }
 
   onRegenerateKey() {
@@ -141,4 +142,23 @@ export class Dashboard implements OnInit {
       })
     }
   }
+
+  analyticsData = signal<any[]>([]);
+maxCount = 1;
+
+loadAnalytics() {
+  const p = this.selectedProject();
+  if (p) {
+    this.projectService.getAnalyticsSummary(p.id).subscribe(data => {
+      this.analyticsData.set(data);
+      // Determine max value for visual bar scaling configurations
+      const counts = data.map(d => d.count);
+      this.maxCount = counts.length ? Math.max(...counts) : 1;
+    });
+  }
+}
+
+calcPercentage(count: number): number {
+  return (count / this.maxCount) * 100;
+}
 }

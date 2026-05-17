@@ -102,6 +102,26 @@
             </div>
           }
         </div>
+
+        <div class="card wide-card">
+          <h3>Project Traffic Summary</h3>
+          <div class="analytics-chart-placeholder">
+            @for (stat of analyticsData(); track stat.bucket + stat.dimension) {
+              <div class="chart-row">
+                <span class="timestamp-label">{{ stat.bucket | date:'shortTime' }}</span>
+                <span class="badge">{{ stat.dimension }}</span>
+                <div class="progress-bar-container">
+                  <div class="progress-bar" [style.width.%]="calcPercentage(stat.count)"></div>
+                </div>
+                <span class="count-value"><strong>{{ stat.count }}</strong> events</span>
+              </div>
+            } @empty {
+              <p class="text-muted">No structural metrics found within the selected interval.</p>
+            }
+          </div>
+        </div>
+
+        
     </section>
     } @else {
     <div class="empty-state">Select a project to manage settings.</div>

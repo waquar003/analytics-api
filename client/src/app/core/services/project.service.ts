@@ -51,4 +51,8 @@ export class ProjectService {
       `${this.API_URL}/${projectId}/events/received?limit=${limit}&offset=${offset}`
     )
   }
+
+  getAnalyticsSummary(projectId: string, groupBy: string = 'event_type'): Observable<any[]> {
+    return this.http.get<any[]>(`${this.API_URL}/${projectId}/analytics/summary?group_by=${groupBy}`)
+  }
 }
