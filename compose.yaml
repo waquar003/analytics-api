@@ -4,8 +4,8 @@ services:
     image: wurstmeister/zookeeper:latest
     ports:
       - "${ZOOKEEPER_PORT}:${ZOOKEEPER_PORT}"
-      - "2888:2888" # Follower port
-      - "3888:3888" # Election port
+      - "2888:2888" 
+      - "3888:3888" 
     environment:
       ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_PORT}
       ZOOKEEPER_TICK_TIME: 2000
@@ -55,17 +55,8 @@ services:
           sleep 3
         done
         echo 'Kafka is up! Creating topics...'
-        
-        # Create main topic
-        kafka-topics.sh --bootstrap-server ${KAFKA_INTERNAL_LISTENER_HOST}:${KAFKA_INTERNAL_LISTENER_PORT} --create --if-not-exists \
-          --topic ${KAFKA_MAIN_TOPIC} \
-          --partitions 1 --replication-factor 1
-          
-        # Create DLQ topic
-        kafka-topics.sh --bootstrap-server ${KAFKA_INTERNAL_LISTENER_HOST}:${KAFKA_INTERNAL_LISTENER_PORT} --create --if-not-exists \
-          --topic ${KAFKA_DLQ_TOPIC} \
-          --partitions 1 --replication-factor 1
-          
+        kafka-topics.sh --bootstrap-server ${KAFKA_INTERNAL_LISTENER_HOST}:${KAFKA_INTERNAL_LISTENER_PORT} --create --if-not-exists --topic ${KAFKA_MAIN_TOPIC} --partitions 1 --replication-factor 1
+        kafka-topics.sh --bootstrap-server ${KAFKA_INTERNAL_LISTENER_HOST}:${KAFKA_INTERNAL_LISTENER_PORT} --create --if-not-exists --topic ${KAFKA_DLQ_TOPIC} --partitions 1 --replication-factor 1
         echo 'Topics created successfully.'
       "
 
@@ -79,12 +70,6 @@ services:
     depends_on:
       kafka-init:
         condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9000 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
 
   redis:
     image: redis:alpine
@@ -98,7 +83,6 @@ services:
       retries: 5
       start_period: 5s
 
-  # Application Services
   db:
     image: timescale/timescaledb:latest-pg16
     ports:
@@ -108,45 +92,68 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data:z
 
-  app:
-    image: analytics-api:v1
+  db-init:
+    image: analytics-api-admin:v1
+    build:
+      context: ./server
+      dockerfile: Dockerfile.web
+    restart: "no"
+    env_file:
+      - .env
+    command: ["python", "-c", "from src.db import create_db_and_tables; create_db_and_tables(); print('Database schema layout created successfully.')"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  admin-web:
+    image: analytics-api-admin:v1
     build:
       context: ./server
       dockerfile: Dockerfile.web
     env_file:
       - .env
     ports:
-      - "${PORT}:${PORT}"
-    command: watchfiles 'uvicorn src.main:app --host 0.0.0.0 --port ${PORT}' src
+      - "8000:8000"
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./server/src:/app/src:rw,z
     depends_on:
       db:
         condition: service_healthy
-      kafka-init:
+      db-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-    develop:
-      watch:
-        - action: sync
-          path: ./server/src
-          target: /app/src
-        - action: rebuild
-          path: ./server/requirements.txt
-        - action: rebuild
-          path: ./server/Dockerfile.web
-  
+
+  tracker-web:
+    build:
+      context: ./tracker-server
+      dockerfile: Dockerfile.web
+    env_file:
+      - .env
+    ports:
+      - "8001:8000"
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./tracker-server/src:/app/src:rw,z
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+
   # WORKER SERVICE
   worker:
-    image: analytics-api:v1 
+    image: analytics-api-admin:v1 
     restart: always 
     command: ["python", "-m", "src.worker.main"] 
     env_file:
@@ -156,7 +163,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      kafka-init:
+      db-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
@@ -167,7 +174,6 @@ services:
       retries: 3
       start_period: 2m 
 
-# Persistent Volumes
 volumes:
   postgres_data:
   zookeeper_data:
