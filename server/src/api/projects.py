@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from src.models.event import AnalyticsEvent
 from src.api.security import get_current_user
 from src.models.user import User
@@ -22,6 +22,7 @@ from src.models import (
 )
 from src.api import get_project_from_secret_key
 from src.worker.cache import SchemaCache
+from src.limiter import limiter
 
 router = APIRouter(
     prefix="/projects",
@@ -31,7 +32,9 @@ router = APIRouter(
 cache = SchemaCache()
 
 @router.post("/", response_model=Project, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 def create_project(
+    request: Request,
     project_data: ProjectCreate, 
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
@@ -78,7 +81,9 @@ def get_my_project_details(
     return project
 
 @router.post("/{project_id}/regenerate-key", response_model=Project)
+@limiter.limit("5/minute")
 def regenerate_public_api_key(
+    request: Request,
     project_id: uuid.UUID,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
@@ -107,7 +112,9 @@ def regenerate_public_api_key(
     status_code=status.HTTP_201_CREATED,
     summary="Register a new event type for your project"
 )
+@limiter.limit("15/minute")
 def register_event_for_project(
+    request: Request,
     project_id: uuid.UUID,
     event_data: RegisteredEventCreate,
     session: Session = Depends(get_session),
@@ -188,7 +195,9 @@ def get_registered_events_for_project(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a registered event type from your project"
 )
+@limiter.limit("20/minute")
 def delete_registered_event(
+    request: Request,
     project_id: uuid.UUID,
     event_id: uuid.UUID,
     session: Session = Depends(get_session),
@@ -234,7 +243,9 @@ def list_all_projects(
 
 
 @router.patch("/{project_id}/whitelist", response_model=Project)
+@limiter.limit("10/minute")
 def update_whitelisted_domains(
+    request: Request,
     project_id: uuid.UUID,
     domains: List[str],
     session: Session = Depends(get_session),

@@ -14,28 +14,40 @@ export class AuthService {
     private router: Router
   ) {}
 
-  private readonly AUTH_URL = `${environment.apiUrl}/auth`
+  private readonly AUTH_URL = `${environment.adminApiUrl}/auth`
 
+  accessToken = signal<string | null>(null)
   currentUser = signal<UserRead | null>(null)
   
   signup(data: UserCreate): Observable<UserRead> {
     return this.http.post<UserRead>(`${this.AUTH_URL}/signup`, data);
   }
 
-  login(data: UserCreate): Observable<UserRead> {
-    return this.http.post<UserRead>(`${this.AUTH_URL}/login`, data).pipe(
+  login(data: UserCreate): Observable<any> {
+    return this.http.post<any>(`${this.AUTH_URL}/login`, data, { withCredentials: true }).pipe(
       tap(res => {
-        localStorage.setItem('x-user-email', data.email);
-        localStorage.setItem('x-user-password', data.password!);
+        this.accessToken.set(res.access_token)
         this.currentUser.set(res);
       })
     )
   }
 
+  refreshAccessToken(): Observable<{ access_token: string }> {
+    return this.http.post<{ access_token: string }>(`${this.AUTH_URL}/refresh`, {}, { withCredentials: true }).pipe(
+      tap(res => this.accessToken.set(res.access_token))
+    )
+  }
+
   logout() {
-    this.currentUser.set(null);
-    localStorage.removeItem('x-user-email');
-    localStorage.removeItem('x-user-password');
-    this.router.navigate(['/login']);
+    this.http.post(`${this.AUTH_URL}/logout`, {}, { withCredentials: true }).subscribe({
+      next: () => this.clearSessionState(),
+      error: () => this.clearSessionState()
+    })
+  }
+
+  private clearSessionState() {
+    this.accessToken.set(null)
+    this.currentUser.set(null)
+    this.router.navigate(['/login'])
   }
 }

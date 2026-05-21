@@ -103,7 +103,7 @@ services:
     image: analytics-api-admin:v1
     build:
       context: ./server
-      dockerfile: Dockerfile.web
+      dockerfile: Dockerfile
     restart: "no"
     env_file:
       - .env
@@ -116,7 +116,7 @@ services:
     image: analytics-api-admin:v1
     build:
       context: ./server
-      dockerfile: Dockerfile.web
+      dockerfile: Dockerfile
     env_file:
       - .env
     ports:
@@ -135,7 +135,7 @@ services:
   tracker-web:
     build:
       context: ./tracker-server
-      dockerfile: Dockerfile.web
+      dockerfile: Dockerfile
     env_file:
       - .env
     ports:

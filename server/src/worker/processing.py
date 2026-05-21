@@ -2,29 +2,26 @@ import json
 import logging
 from typing import Dict, List, Tuple
 from uuid import UUID
+import asyncio
 
-from kafka import KafkaProducer
-from kafka.errors import KafkaError
-from kafka.structs import TopicPartition, OffsetAndMetadata
+from aiokafka import AIOKafkaProducer
+from aiokafka.errors import KafkaError
+from aiokafka.structs import TopicPartition, OffsetAndMetadata
 from pydantic import ValidationError
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from src.config import settings
-from src.models import AnalyticsEvent, RegisteredEvent
+from src.models import AnalyticsEvent
 from src.worker.cache import SchemaCache
 
 logger = logging.getLogger("AnalyticsWorker.Processing")
-
 schema_cache = SchemaCache()
 
 def is_event_valid(session: Session, project_id: UUID, event_name: str) -> bool:
-    """
-    Checks if an event is registered for the project.
-    """
+    """Checks if an event is registered for the project."""
     logger.info("Trying")
     try:
         allowed_events = schema_cache.get_allowed_events(session, project_id)
-        
         if event_name in allowed_events:
             return True
         else:
@@ -35,10 +32,10 @@ def is_event_valid(session: Session, project_id: UUID, event_name: str) -> bool:
         return False
 
 
-def send_to_dlq(dlq_producer: KafkaProducer, topic: str, value: bytes):
+async def send_to_dlq(dlq_producer: AIOKafkaProducer, topic: str, value: bytes):
     """Sends a single raw message to the Dead Letter Queue."""
     try:
-        dlq_producer.send(topic, value=value)
+        await dlq_producer.send_and_wait(topic, value=value)
     except KafkaError as ke:
         logger.error(f"CRITICAL: Failed to send to DLQ: {ke}")
 
@@ -46,7 +43,7 @@ def send_to_dlq(dlq_producer: KafkaProducer, topic: str, value: bytes):
 def process_message_batch(
     batch: Dict[TopicPartition, List],
     session: Session,
-    dlq_producer: KafkaProducer
+    dlq_producer: AIOKafkaProducer
 ) -> Tuple[List[AnalyticsEvent], Dict[TopicPartition, OffsetAndMetadata]]:
     """
     Processes a batch of messages from Kafka.
@@ -90,12 +87,12 @@ def process_message_batch(
             except (json.JSONDecodeError, ValidationError, ValueError, TypeError) as e:
                 # sending "Poison Pill" messages to the DLQ
                 logger.error(f"Failed to parse or validate message (Offset {msg.offset}): {e}. Sending to DLQ.")
-                send_to_dlq(dlq_producer, settings.KAFKA_DLQ_TOPIC, msg.value)
+                asyncio.create_task(send_to_dlq(dlq_producer, settings.KAFKA_DLQ_TOPIC, msg.value))
             
             except Exception as e:
                 logger.error(f"Unexpected error processing message (Offset {msg.offset}): {e}. Sending to DLQ.")
 
             # Always commit the offset, even for dropped/failed messages to avoid stucking in lhte loop
-            offsets_to_commit[tp] = OffsetAndMetadata(msg.offset + 1, "", -1)
+            offsets_to_commit[tp] = OffsetAndMetadata(msg.offset + 1, "")
 
     return valid_events_to_insert, offsets_to_commit

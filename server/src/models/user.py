@@ -19,6 +19,8 @@ class User(SQLModel, table=True):
 
     projects: List["Project"] = Relationship(back_populates="user")
 
+    refresh_token: Optional[str] = Field(default=None, nullable=True)
+
 class UserCreate(SQLModel):
     email: str
     password: str
