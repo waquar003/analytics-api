@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     """Configuration settings for the application, loaded from .env file."""
     
     # Application Settings
-    PORT: int = 8000
+    PORT: int = 8001
     LOG_LEVEL: str = "INFO"
 
     # Database configuration
@@ -36,8 +36,6 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     JWT_SECRET: str = "fallback_secret"
-    ACCESS_TOKEN_TIMEOUT: int = 900
-    REFRESH_TOKEN_TIMEOUT: int = 604800
 
     class Config:
         env_file = Path(__file__).resolve().parent.parent.parent / ".env"

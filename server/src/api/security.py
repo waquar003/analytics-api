@@ -1,6 +1,7 @@
+import uuid
 from fastapi import Depends, HTTPException, Header, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from src.api.utils import verify_password
+from src.api.utils import decode_access_token, verify_password
 from src.models.user import User
 from sqlmodel import Session, select
 from typing import Optional
@@ -71,15 +72,24 @@ def get_project_for_tracking(
         
     return project
 
+security_scheme = HTTPBearer()
+
 async def get_current_user(
     session: Session = Depends(get_session),
-    x_user_email: str = Header(...),
-    x_user_password: str = Header(...)     
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme)   
 ) -> User:
-    user = session.exec(select(User).where(User.email == x_user_email)).first()
-    if not user or not verify_password(x_user_password, user.hashed_password):
+    token = credentials.credentials
+    payload = decode_access_token(token)
+
+    user_id = payload.get("sub")
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials in headers"
+            detail="Token invalid"
         )
+    
+    user = session.get(User, uuid.UUID(user_id))
+    if not user:
+        raise HTTPException(status_code=401, detail="Account context not found")
+    
     return user

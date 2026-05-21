@@ -1,3 +1,4 @@
 export const environment = {
-    apiUrl: 'http://localhost:8000'
+    adminApiUrl: 'http://127.0.0.1:8000',
+    trackerApiUrl: 'http://127.0.0.1:8001'
 };

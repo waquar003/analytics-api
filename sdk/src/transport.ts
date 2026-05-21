@@ -7,7 +7,7 @@ export const sendEvent = async (payload: any): Promise<void> => {
         return;
     }
 
-    const endpoint = `${config.baseUrl}/track`;
+    const endpoint = `${config.baseUrl}/events/track`;
 
     try {
         fetch(endpoint, {

@@ -8,7 +8,7 @@ interface SDKConfig {
 
 const config: SDKConfig = {
     publicKey: null, 
-    baseUrl: 'http://localhost:8000',
+    baseUrl: 'http://localhost:8001',
     version: '1.0.0',
     initialized: false,
     debug: false
